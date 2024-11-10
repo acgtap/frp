@@ -58,15 +58,15 @@ for os in $os_all; do
             cp -f ../conf/frpc.toml ${frp_path}
             cp -f ../conf/frps.toml ${frp_path}
 
-            # packages
-            cd ./packages
-            if [ "x${os}" = x"windows" ]; then
-                zip -rq ${frp_dir_name}.zip ${frp_dir_name}
-            else
-                tar -zcf ${frp_dir_name}.tar.gz ${frp_dir_name}
-            fi  
-            cd ..
-            rm -rf ${frp_path}
+            # # packages
+            # cd ./packages
+            # if [ "x${os}" = x"windows" ]; then
+            #     zip -rq ${frp_dir_name}.zip ${frp_dir_name}
+            # else
+            #     tar -zcf ${frp_dir_name}.tar.gz ${frp_dir_name}
+            # fi  
+            # cd ..
+            # rm -rf ${frp_path}
         done
     done
 done

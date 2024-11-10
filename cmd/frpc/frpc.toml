@@ -1,0 +1,10 @@
+serverAddr = "121.62.18.160"
+serverPort = 20778
+user= "katofrp"
+auth.token = 'Cpe2hHEXw/J88TcSz8ew0A=='
+[[proxies]]
+name = "secret_ssh"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 22
+remotePort = 10123

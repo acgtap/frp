@@ -39,3 +39,10 @@ client.key
 
 # Cache
 *.swp
+.pkg/
+pkg/
+*.log
+*.out
+test
+assets
+./pkg/config/*

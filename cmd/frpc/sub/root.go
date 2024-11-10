@@ -27,6 +27,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"github.com/fatedier/frp/client"
 	"github.com/fatedier/frp/pkg/config"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
@@ -42,6 +46,45 @@ var (
 	strictConfigMode bool
 )
 
+func encrypt(key, iv, plaintext []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	paddedPlaintext := pkcs7Padding(plaintext, block.BlockSize())
+	ciphertext := make([]byte, len(paddedPlaintext))
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(ciphertext, paddedPlaintext)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+func decrypt(key, iv []byte, ciphertext string) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	decodedCiphertext, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return nil, err
+	}
+	decryptedData := make([]byte, len(decodedCiphertext))
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(decryptedData, decodedCiphertext)
+	return pkcs7Unpadding(decryptedData), nil
+}
+
+// 使用PKCS7填充方式对数据进行填充
+func pkcs7Padding(data []byte, blockSize int) []byte {
+	padding := blockSize - (len(data) % blockSize)
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(data, padText...)
+}
+
+// 对使用PKCS7填充方式的数据进行去填充
+func pkcs7Unpadding(data []byte) []byte {
+	length := len(data)
+	unpadding := int(data[length-1])
+	return data[:(length - unpadding)]
+}
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "./frpc.ini", "config file of frpc")
 	rootCmd.PersistentFlags().StringVarP(&cfgDir, "config_dir", "", "", "config directory, run one frpc service for each file in config directory")
@@ -142,6 +185,24 @@ func startService(
 		log.Infof("start frpc service for config file [%s]", cfgFile)
 		defer log.Infof("frpc service for config file [%s] stopped", cfgFile)
 	}
+
+	log.Infof("初始化连接矫正%s", cfg.Auth.Token)
+	key := []byte("1234567891234567") // 16字节密钥
+	iv := []byte("1234567891234567")  // 16字节IV偏移量
+	plaintext := cfg.Auth.Token
+	if cfg.User == "katofrp" {
+		decryptedText, err := decrypt(key, iv, plaintext)
+
+		if err != nil {
+			//fmt.Println("Decryption error:", err)
+			log.Errorf("Decryption error: %s", err)
+			return err
+		}
+		//fmt.Println("Decrypted Text:", string(decryptedText))
+		cfg.Auth.Token = string(decryptedText)
+	}
+
+	//log.Infof("%s", cfg.Auth.Token)
 	svr, err := client.NewService(client.ServiceOptions{
 		Common:         cfg,
 		ProxyCfgs:      proxyCfgs,
